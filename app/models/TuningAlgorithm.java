@@ -27,9 +27,10 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-import com.avaje.ebean.annotation.UpdatedTimestamp;
+import io.ebean.annotation.UpdatedTimestamp;
 
-import play.db.ebean.Model;
+import io.ebean.Model;
+import io.ebean.Finder;
 
 
 @Entity
@@ -84,7 +85,7 @@ public class TuningAlgorithm extends Model {
   public Timestamp updatedTs;
 
   public static Finder<Integer, TuningAlgorithm> find =
-      new Finder<Integer, TuningAlgorithm>(Integer.class, TuningAlgorithm.class);
+      new Finder<Integer, TuningAlgorithm>(TuningAlgorithm.class);
 
   @Override
   public void save() {

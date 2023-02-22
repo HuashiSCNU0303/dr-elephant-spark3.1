@@ -331,7 +331,6 @@ public class AnalyticJob {
       }
     }
 
-
     HadoopMetricsAggregator hadoopMetricsAggregator = ElephantContext.instance().getAggregatorForApplicationType(getAppType());
     hadoopMetricsAggregator.aggregate(data);
     HadoopAggregatedData hadoopAggregatedData = hadoopMetricsAggregator.getResult();
@@ -366,6 +365,8 @@ public class AnalyticJob {
           AppHeuristicResult.HEURISTIC_NAME_LIMIT, getAppId());
       detail.severity = heuristicResult.getSeverity();
       detail.score = heuristicResult.getScore();
+      
+      // logger.info("heuristic result = " + detail.heuristicName);
 
       // Load Heuristic Details
       for (HeuristicResultDetails heuristicResultDetails : heuristicResult.getHeuristicResultDetails()) {
@@ -377,6 +378,9 @@ public class AnalyticJob {
             AppHeuristicResultDetails.VALUE_LIMIT, getAppId());
         heuristicDetail.details = Utils.truncateField(heuristicResultDetails.getDetails(),
             AppHeuristicResultDetails.DETAILS_LIMIT, getAppId());
+            
+        // logger.info("heuristic result detail name = " + heuristicDetail.name + ", heuristic result detail value = " + heuristicDetail.value);
+        
         // This was added for AnalyticTest. Commenting this out to fix a bug. Also disabling AnalyticJobTest.
         //detail.yarnAppHeuristicResultDetails = new ArrayList<AppHeuristicResultDetails>();
         detail.yarnAppHeuristicResultDetails.add(heuristicDetail);
@@ -390,6 +394,8 @@ public class AnalyticJob {
 
     // Retrieve information from job configuration like scheduler information and store them into result.
     InfoExtractor.loadInfo(result, data);
+    
+    // logger.info("overall result = " + result.yarnAppHeuristicResults.get(1).yarnAppHeuristicResultDetails.get(0).name + ", value = " + result.yarnAppHeuristicResults.get(1).yarnAppHeuristicResultDetails.get(0).value);
 
     return result;
   }

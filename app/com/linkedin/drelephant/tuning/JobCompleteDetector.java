@@ -66,7 +66,7 @@ public abstract class JobCompleteDetector {
    */
   private List<TuningJobExecutionParamSet> getExecutionsInProgress() {
     logger.info("Fetching the executions which are in progress");
-    List<TuningJobExecutionParamSet> tuningJobExecutionParamSets = TuningJobExecutionParamSet.find.fetch(TuningJobExecutionParamSet.TABLE.jobExecution)
+    List<TuningJobExecutionParamSet> tuningJobExecutionParamSets = TuningJobExecutionParamSet.find.query().fetch(TuningJobExecutionParamSet.TABLE.jobExecution)
         .fetch(TuningJobExecutionParamSet.TABLE.jobSuggestedParamSet)
         .where()
         .eq(TuningJobExecutionParamSet.TABLE.jobExecution + '.' + JobExecution.TABLE.executionState,

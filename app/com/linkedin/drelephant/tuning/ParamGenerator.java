@@ -16,7 +16,7 @@
 
 package com.linkedin.drelephant.tuning;
 
-import com.avaje.ebean.Expr;
+import io.ebean.Expr;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -86,7 +86,7 @@ public abstract class ParamGenerator {
     logger.info("Checking which jobs need new parameter suggestion");
     List<TuningJobDefinition> jobsForParamSuggestion = new ArrayList<TuningJobDefinition>();
 
-    List<JobSuggestedParamSet> pendingParamSetList = JobSuggestedParamSet.find.select("*")
+    List<JobSuggestedParamSet> pendingParamSetList = JobSuggestedParamSet.find.query().select("*")
         .fetch(JobSuggestedParamSet.TABLE.jobDefinition, "*")
         .where()
         .or(Expr.or(Expr.eq(JobSuggestedParamSet.TABLE.paramSetState, JobSuggestedParamSet.ParamSetStatus.CREATED),
@@ -102,7 +102,7 @@ public abstract class ParamGenerator {
       }
     }
 
-    List<TuningJobDefinition> tuningJobDefinitionList = TuningJobDefinition.find.select("*")
+    List<TuningJobDefinition> tuningJobDefinitionList = TuningJobDefinition.find.query().select("*")
         .fetch(TuningJobDefinition.TABLE.job, "*")
         .where()
         .eq(TuningJobDefinition.TABLE.tuningEnabled, 1)
@@ -150,23 +150,23 @@ public abstract class ParamGenerator {
     for (TuningJobDefinition tuningJobDefinition : tuningJobs) {
       JobDefinition job = tuningJobDefinition.job;
       logger.info("Getting tuning information for job: " + job.jobDefId);
-      List<TuningParameter> tuningParameterList = TuningParameter.find.where()
+      List<TuningParameter> tuningParameterList = TuningParameter.find.query().where()
           .eq(TuningParameter.TABLE.tuningAlgorithm + "." + TuningAlgorithm.TABLE.id,
               tuningJobDefinition.tuningAlgorithm.id)
           .eq(TuningParameter.TABLE.isDerived, 0)
           .findList();
 
         logger.info("Fetching default parameter values for job " + tuningJobDefinition.job.jobDefId);
-        JobSuggestedParamSet defaultJobParamSet = JobSuggestedParamSet.find.where()
+        JobSuggestedParamSet defaultJobParamSet = JobSuggestedParamSet.find.query().where()
             .eq(JobSuggestedParamSet.TABLE.jobDefinition + "." + JobDefinition.TABLE.id, tuningJobDefinition.job.id)
             .eq(JobSuggestedParamSet.TABLE.isParamSetDefault, 1)
             .order()
             .desc(JobSuggestedParamSet.TABLE.id)
             .setMaxRows(1)
-            .findUnique();
+            .findOne();
 
         if (defaultJobParamSet != null) {
-          List<JobSuggestedParamValue> jobSuggestedParamValueList = JobSuggestedParamValue.find.where()
+          List<JobSuggestedParamValue> jobSuggestedParamValueList = JobSuggestedParamValue.find.query().where()
               .eq(JobSuggestedParamValue.TABLE.jobSuggestedParamSet + "." + JobExecution.TABLE.id,
                   defaultJobParamSet.id)
               .findList();
@@ -208,7 +208,7 @@ public abstract class ParamGenerator {
 
           logger.info("Param set id: " + paramSetId.toString());
           JobSuggestedParamSet jobSuggestedParamSet =
-              JobSuggestedParamSet.find.select("*").where().eq(JobSuggestedParamSet.TABLE.id, paramSetId).findUnique();
+              JobSuggestedParamSet.find.query().select("*").where().eq(JobSuggestedParamSet.TABLE.id, paramSetId).findOne();
 
           if (jobSuggestedParamSet.paramSetState.equals(JobSuggestedParamSet.ParamSetStatus.FITNESS_COMPUTED)
               && jobSuggestedParamSet.fitness != null) {
@@ -308,15 +308,15 @@ public abstract class ParamGenerator {
         continue;
       }
 
-      TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.select("*")
+      TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.query().select("*")
           .fetch(TuningJobDefinition.TABLE.job, "*")
           .where()
           .eq(TuningJobDefinition.TABLE.job + "." + JobDefinition.TABLE.id, job.id)
           .eq(TuningJobDefinition.TABLE.tuningEnabled, 1)
-          .findUnique();
+          .findOne();
 
       List<TuningParameter> derivedParameterList = new ArrayList<TuningParameter>();
-        derivedParameterList = TuningParameter.find.where()
+        derivedParameterList = TuningParameter.find.query().where()
             .eq(TuningParameter.TABLE.tuningAlgorithm + "." + TuningAlgorithm.TABLE.id,
                 tuningJobDefinition.tuningAlgorithm.id)
             .eq(TuningParameter.TABLE.isDerived, 1)

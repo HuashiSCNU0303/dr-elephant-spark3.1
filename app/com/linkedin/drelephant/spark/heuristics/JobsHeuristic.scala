@@ -23,6 +23,7 @@ import com.linkedin.drelephant.configurations.heuristic.HeuristicConfigurationDa
 import com.linkedin.drelephant.spark.data.SparkApplicationData
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.JobData
 import org.apache.spark.JobExecutionStatus
+import java.util.Date
 
 
 /**
@@ -68,7 +69,8 @@ class JobsHeuristic(private val heuristicConfigurationData: HeuristicConfigurati
       new HeuristicResultDetails(
         "Spark jobs with high task failure rates",
         formatJobsWithHighTaskFailureRates(evaluator.jobsWithHighTaskFailureRates)
-      )
+      ),
+      new HeuristicResultDetails("Spark jobs duration", evaluator.jobDuration.toString)
     )
     val result = new HeuristicResult(
       heuristicConfigurationData.getClassName,
@@ -102,6 +104,22 @@ object JobsHeuristic {
     lazy val numFailedJobs: Int = jobDatas.count { _.status == JobExecutionStatus.FAILED }
 
     lazy val failedJobs: Seq[JobData] = jobDatas.filter { _.status == JobExecutionStatus.FAILED }
+
+    lazy val jobDuration: Long = {
+      var lastFinished: Long = 0
+      var firstStarted: Long = Long.MaxValue
+      for (jobData <- jobDatas) {
+        val jobStart = jobData.submissionTime.getOrElse(new Date).getTime
+        val jobEnd = jobData.completionTime.getOrElse(new Date).getTime
+        if (jobStart < firstStarted) {
+          firstStarted = jobStart
+        }
+        if (jobEnd > lastFinished) {
+          lastFinished = jobEnd
+        }
+      }
+      lastFinished - firstStarted
+    }
 
     lazy val jobFailureRate: Option[Double] = {
       // Currently, the calculation assumes there are no jobs with UNKNOWN or RUNNING state.

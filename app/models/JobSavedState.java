@@ -20,13 +20,14 @@ import java.sql.Timestamp;
 
 import javax.persistence.Column;
 
-import play.db.ebean.Model;
+import io.ebean.Model;
+import io.ebean.Finder;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-import com.avaje.ebean.annotation.UpdatedTimestamp;
+import io.ebean.annotation.UpdatedTimestamp;
 
 
 @Entity
@@ -61,7 +62,7 @@ public class JobSavedState extends Model {
   }
 
   public static Finder<Integer, JobSavedState> find =
-      new Finder<Integer, JobSavedState>(Integer.class, JobSavedState.class);
+      new Finder<Integer, JobSavedState>(JobSavedState.class);
 
   @Override
   public void save() {

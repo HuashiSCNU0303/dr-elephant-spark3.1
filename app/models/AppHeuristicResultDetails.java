@@ -28,7 +28,8 @@ import javax.persistence.Table;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
-import play.db.ebean.Model;
+// import play.db.ebean.Model;
+import io.ebean.Model;
 
 
 @Entity

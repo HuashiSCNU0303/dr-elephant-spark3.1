@@ -62,20 +62,20 @@ public class AutoTuningAPIHelper {
    * @return JobSuggestedParamSet the best parameter set of the given job if it exists else  the default parameter set
    */
   private JobSuggestedParamSet getBestParamSet(String jobDefId) {
-    JobSuggestedParamSet jobSuggestedParamSetBestParamSet = JobSuggestedParamSet.find.select("*")
+    JobSuggestedParamSet jobSuggestedParamSetBestParamSet = JobSuggestedParamSet.find.query().select("*")
         .where()
         .eq(JobSuggestedParamSet.TABLE.jobDefinition + "." + JobDefinition.TABLE.jobDefId, jobDefId)
         .eq(JobSuggestedParamSet.TABLE.isParamSetBest, true)
         .setMaxRows(1)
-        .findUnique();
+        .findOne();
 
     if (jobSuggestedParamSetBestParamSet == null) {
-      jobSuggestedParamSetBestParamSet = JobSuggestedParamSet.find.select("*")
+      jobSuggestedParamSetBestParamSet = JobSuggestedParamSet.find.query().select("*")
           .where()
           .eq(JobSuggestedParamSet.TABLE.jobDefinition + "." + JobDefinition.TABLE.jobDefId, jobDefId)
           .eq(JobSuggestedParamSet.TABLE.isParamSetDefault, true)
           .setMaxRows(1)
-          .findUnique();
+          .findOne();
     }
     return jobSuggestedParamSetBestParamSet;
   }
@@ -86,7 +86,7 @@ public class AutoTuningAPIHelper {
    * @return List<JobSuggestedParamValue> list of parameters
    */
   private List<JobSuggestedParamValue> getParamSetValues(Long paramSetId) {
-    List<JobSuggestedParamValue> jobSuggestedParamValues = JobSuggestedParamValue.find.where()
+    List<JobSuggestedParamValue> jobSuggestedParamValues = JobSuggestedParamValue.find.query().where()
         .eq(JobSuggestedParamValue.TABLE.jobSuggestedParamSet + '.' + JobSuggestedParamSet.TABLE.id, paramSetId)
         .findList();
     return jobSuggestedParamValues;
@@ -116,11 +116,11 @@ public class AutoTuningAPIHelper {
    */
   private void setTuningAlgorithm(TuningInput tuningInput) throws IllegalArgumentException {
     //Todo: Handle algorithm version later
-    TuningAlgorithm tuningAlgorithm = TuningAlgorithm.find.select("*")
+    TuningAlgorithm tuningAlgorithm = TuningAlgorithm.find.query().select("*")
         .where()
         .eq(TuningAlgorithm.TABLE.jobType, tuningInput.getJobType())
         .eq(TuningAlgorithm.TABLE.optimizationMetric, tuningInput.getOptimizationMetric())
-        .findUnique();
+        .findOne();
     if (tuningAlgorithm == null) {
       throw new IllegalArgumentException(
           "Wrong job type or optimization metric. Job Type " + tuningInput.getJobType() + ". Optimization Metrics: "
@@ -138,18 +138,18 @@ public class AutoTuningAPIHelper {
     Integer penaltyConstant = 3;
     logger.info("Execution " + jobExecId + " failed/cancelled. Applying penalty");
 
-    TuningJobExecutionParamSet tuningJobExecutionParamSet = TuningJobExecutionParamSet.find.where()
+    TuningJobExecutionParamSet tuningJobExecutionParamSet = TuningJobExecutionParamSet.find.query().where()
         .eq(TuningJobExecutionParamSet.TABLE.jobExecution + '.' + JobExecution.TABLE.jobExecId, jobExecId)
         .setMaxRows(1)
-        .findUnique();
+        .findOne();
 
     JobSuggestedParamSet jobSuggestedParamSet = tuningJobExecutionParamSet.jobSuggestedParamSet;
     JobExecution jobExecution = tuningJobExecutionParamSet.jobExecution;
     JobDefinition jobDefinition = jobExecution.job;
 
-    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.where()
+    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.query().where()
         .eq(TuningJobDefinition.TABLE.job + '.' + JobDefinition.TABLE.id, jobDefinition.id)
-        .findUnique();
+        .findOne();
     Double averageResourceUsagePerGBInput =
         tuningJobDefinition.averageResourceUsage * FileUtils.ONE_GB / tuningJobDefinition.averageInputSizeInBytes;
     Double maxDesiredResourceUsagePerGBInput =
@@ -174,7 +174,7 @@ public class AutoTuningAPIHelper {
    */
   private FlowDefinition getFlowDefinition(TuningInput tuningInput) {
     FlowDefinition flowDefinition =
-        FlowDefinition.find.where().eq(FlowDefinition.TABLE.flowDefId, tuningInput.getFlowDefId()).findUnique();
+        FlowDefinition.find.query().where().eq(FlowDefinition.TABLE.flowDefId, tuningInput.getFlowDefId()).findOne();
     if (flowDefinition == null) {
       flowDefinition = new FlowDefinition();
       flowDefinition.flowDefId = tuningInput.getFlowDefId();
@@ -192,7 +192,7 @@ public class AutoTuningAPIHelper {
    */
   private FlowExecution getFlowExecution(TuningInput tuningInput) {
     FlowExecution flowExecution =
-        FlowExecution.find.where().eq(FlowExecution.TABLE.flowExecId, tuningInput.getFlowExecId()).findUnique();
+        FlowExecution.find.query().where().eq(FlowExecution.TABLE.flowExecId, tuningInput.getFlowExecId()).findOne();
 
     if (flowExecution == null) {
       flowExecution = new FlowExecution();
@@ -213,7 +213,7 @@ public class AutoTuningAPIHelper {
     logger.info("Adding new job for tuning, job id: " + tuningInput.getJobDefId());
     FlowDefinition flowDefinition = getFlowDefinition(tuningInput);
     JobDefinition job =
-        JobDefinition.find.select("*").where().eq(JobDefinition.TABLE.jobDefId, tuningInput.getJobDefId()).findUnique();
+        JobDefinition.find.query().select("*").where().eq(JobDefinition.TABLE.jobDefId, tuningInput.getJobDefId()).findOne();
 
     if (job == null) {
       job = new JobDefinition();
@@ -257,13 +257,13 @@ public class AutoTuningAPIHelper {
 
     String jobDefId = tuningInput.getJobDefId();
 
-    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.select("*")
+    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.query().select("*")
         .fetch(TuningJobDefinition.TABLE.job, "*")
         .where()
         .eq(TuningJobDefinition.TABLE.job + "." + JobDefinition.TABLE.jobDefId, jobDefId)
         .setMaxRows(1)
         .orderBy(TuningJobDefinition.TABLE.createdTs + " desc")
-        .findUnique();
+        .findOne();
 
     if (tuningJobDefinition == null) {
       // Job new to tuning
@@ -300,11 +300,11 @@ public class AutoTuningAPIHelper {
    */
   private JobExecution getJobExecution(TuningInput tuningInput) {
 
-    JobExecution jobExecution = JobExecution.find.select("*")
+    JobExecution jobExecution = JobExecution.find.query().select("*")
         .fetch(JobExecution.TABLE.job, "*")
         .where()
         .eq(JobExecution.TABLE.jobExecId, tuningInput.getJobExecId())
-        .findUnique();
+        .findOne();
 
     if (jobExecution == null) {
       jobExecution = addNewExecution(tuningInput);
@@ -357,12 +357,12 @@ public class AutoTuningAPIHelper {
     tuningJobExecutionParamSet.jobSuggestedParamSet = jobSuggestedParamSet;
     tuningJobExecutionParamSet.jobExecution = jobExecution;
 
-    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.where()
+    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.query().where()
         .eq(TuningJobDefinition.TABLE.job + '.' + JobDefinition.TABLE.id, jobExecution.job.id)
         .order()
         .desc(TuningJobDefinition.TABLE.createdTs)
         .setMaxRows(1)
-        .findUnique();
+        .findOne();
     tuningJobExecutionParamSet.tuningEnabled = tuningJobDefinition.tuningEnabled;
     tuningJobExecutionParamSet.save();
   }
@@ -374,7 +374,7 @@ public class AutoTuningAPIHelper {
    * @return JobSuggestedParamSet corresponding to the given job definition
    */
   private JobSuggestedParamSet getNewSuggestedParamSet(JobDefinition jobDefinition) {
-    JobSuggestedParamSet jobSuggestedParamSet = JobSuggestedParamSet.find.select("*")
+    JobSuggestedParamSet jobSuggestedParamSet = JobSuggestedParamSet.find.query().select("*")
         .fetch(JobSuggestedParamSet.TABLE.jobDefinition, "*")
         .where()
         .eq(JobSuggestedParamSet.TABLE.jobDefinition + "." + JobDefinition.TABLE.id, jobDefinition.id)
@@ -382,7 +382,7 @@ public class AutoTuningAPIHelper {
         .order()
         .asc(JobSuggestedParamSet.TABLE.id)
         .setMaxRows(1)
-        .findUnique();
+        .findOne();
 
     if (jobSuggestedParamSet == null) {
       //No new parameter set exists, returning the best parameter set
@@ -467,7 +467,7 @@ public class AutoTuningAPIHelper {
     JobSuggestedParamValue jobSuggestedParamValue = new JobSuggestedParamValue();
     jobSuggestedParamValue.jobSuggestedParamSet = jobSuggestedParamSet;
     TuningParameter tuningParameter =
-        TuningParameter.find.where().eq(TuningParameter.TABLE.paramName, paramName).findUnique();
+        TuningParameter.find.query().where().eq(TuningParameter.TABLE.paramName, paramName).findOne();
     if (tuningParameter != null) {
       jobSuggestedParamValue.tuningParameter = tuningParameter;
       jobSuggestedParamValue.paramValue = paramValue;

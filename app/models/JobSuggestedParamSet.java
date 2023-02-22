@@ -16,7 +16,7 @@
 
 package models;
 
-import com.avaje.ebean.annotation.UpdatedTimestamp;
+import io.ebean.annotation.UpdatedTimestamp;
 import java.sql.Timestamp;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -32,8 +32,8 @@ import javax.persistence.ManyToOne;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
-import play.db.ebean.Model;
-
+import io.ebean.Model;
+import io.ebean.Finder;
 
 @Entity
 @Table(name = "job_suggested_param_set")
@@ -101,8 +101,8 @@ public class JobSuggestedParamSet extends Model {
   @UpdatedTimestamp
   public Timestamp updatedTs;
 
-  public static Model.Finder<Long, JobSuggestedParamSet> find =
-      new Model.Finder<Long, JobSuggestedParamSet>(Long.class, JobSuggestedParamSet.class);
+  public static Finder<Long, JobSuggestedParamSet> find =
+      new Finder<Long, JobSuggestedParamSet>(JobSuggestedParamSet.class);
 
   @Override
   public void save() {

@@ -26,9 +26,10 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import com.avaje.ebean.annotation.UpdatedTimestamp;
+import io.ebean.annotation.UpdatedTimestamp;
 
-import play.db.ebean.Model;
+import io.ebean.Model;
+import io.ebean.Finder;
 
 
 @Entity
@@ -92,8 +93,8 @@ public class TuningJobDefinition extends Model {
     }
   }
 
-  public static Model.Finder<Integer, TuningJobDefinition> find =
-      new Model.Finder<Integer, TuningJobDefinition>(Integer.class, TuningJobDefinition.class);
+  public static Finder<Integer, TuningJobDefinition> find =
+      new Finder<Integer, TuningJobDefinition>(TuningJobDefinition.class);
 
   @Column(nullable = false)
   public Timestamp createdTs;

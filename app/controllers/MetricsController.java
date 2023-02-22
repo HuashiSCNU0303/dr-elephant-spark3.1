@@ -18,7 +18,7 @@ package controllers;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
-import com.codahale.metrics.JmxReporter;
+import com.codahale.metrics.jmx.JmxReporter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
@@ -106,9 +106,9 @@ public class MetricsController extends Controller {
       public Integer getValue() {
         long now = System.currentTimeMillis();
         if (now - _lastUpdate > UPDATE_DELAY) {
-          _count = AppResult.find.where()
+          _count = AppResult.find.query().where()
                   .gt(AppResult.TABLE.FINISH_TIME, now - DAY)
-                  .findRowCount();
+                  .findCount();
           _lastUpdate = now;
         }
         return _count;
@@ -215,7 +215,7 @@ public class MetricsController extends Controller {
    *
    * @return Will return 'alive' if Dr. Elephant is Up.
    */
-  public static Result ping() {
+  public Result ping() {
     return ok(Json.toJson("alive"));
   }
 
@@ -225,7 +225,7 @@ public class MetricsController extends Controller {
    *
    * @return Will return all the metrics in Json format.
    */
-  public static Result index() {
+  public Result index() {
     if (_metricRegistry != null) {
       return ok(Json.toJson(_metricRegistry));
     } else {
@@ -239,7 +239,7 @@ public class MetricsController extends Controller {
    *
    * @return Will return all the healthcheck metrics in Json format.
    */
-  public static Result healthcheck() {
+  public Result healthcheck() {
     if (_healthCheckRegistry != null) {
       return ok(Json.toJson(_healthCheckRegistry.runHealthChecks()));
     } else {

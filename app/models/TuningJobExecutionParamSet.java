@@ -16,7 +16,7 @@
 
 package models;
 
-import com.avaje.ebean.annotation.UpdatedTimestamp;
+import io.ebean.annotation.UpdatedTimestamp;
 import java.sql.Timestamp;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -25,7 +25,8 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
-import play.db.ebean.Model;
+import io.ebean.Model;
+import io.ebean.Finder;
 
 @Entity
 @Table(name = "tuning_job_execution_param_set")
@@ -59,7 +60,7 @@ public class TuningJobExecutionParamSet extends Model {
   public Timestamp updatedTs;
 
   public static Finder<Long, TuningJobExecutionParamSet> find =
-      new Finder<Long, TuningJobExecutionParamSet>(Long.class, TuningJobExecutionParamSet.class);
+      new Finder<Long, TuningJobExecutionParamSet>(TuningJobExecutionParamSet.class);
 
   @Override
   public void save() {

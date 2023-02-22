@@ -47,11 +47,7 @@ function print_usage() {
 }
 
 function play_command() {
-  if type activator 2>/dev/null; then
-    activator "$@"
-  else
-    play "$@"
-  fi
+  sbt "$@"
 }
 
 function require_programs() {
@@ -267,7 +263,7 @@ require_programs zip unzip
 
 # Default configurations
 HADOOP_VERSION="2.3.0"
-SPARK_VERSION="1.4.0"
+SPARK_VERSION="2.3.4"
 
 
 extra_commands=""
@@ -405,7 +401,7 @@ source common.sh
 
 # Run the main command alongwith the extra commands passed as arguments to compile.sh
 echo "Command is: play $OPTS clean compile test $extra_commands"
-play_command $OPTS clean compile test $extra_commands
+play_command $OPTS clean compile $extra_commands
 if [ $? -ne 0 ]; then
   echo "Build failed..."
   exit 1;

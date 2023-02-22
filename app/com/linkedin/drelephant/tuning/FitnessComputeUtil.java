@@ -16,7 +16,7 @@
 
 package com.linkedin.drelephant.tuning;
 
-import com.avaje.ebean.Expr;
+import io.ebean.Expr;
 import com.linkedin.drelephant.AutoTuner;
 import com.linkedin.drelephant.ElephantContext;
 import com.linkedin.drelephant.mapreduce.heuristics.CommonConstantsHeuristic;
@@ -86,14 +86,14 @@ public class FitnessComputeUtil {
   }
 
   private boolean isTuningEnabled(Integer jobDefinitionId) {
-    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.where()
+    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.query().where()
         .eq(TuningJobDefinition.TABLE.job + '.' + JobDefinition.TABLE.id, jobDefinitionId)
         .order()
         // There can be multiple entries in tuningJobDefinition if the job is switch on/off multiple times.
         // The latest entry gives the information regarding whether tuning is enabled or not
         .desc(TuningJobDefinition.TABLE.createdTs)
         .setMaxRows(1)
-        .findUnique();
+        .findOne();
 
     return tuningJobDefinition != null && tuningJobDefinition.tuningEnabled;
   }
@@ -141,7 +141,7 @@ public class FitnessComputeUtil {
 
         JobSuggestedParamSet jobSuggestedParamSet = tuningJobExecutionParamSet.jobSuggestedParamSet;
 
-        List<JobSuggestedParamValue> jobSuggestedParamValueList = JobSuggestedParamValue.find.where()
+        List<JobSuggestedParamValue> jobSuggestedParamValueList = JobSuggestedParamValue.find.query().where()
             .eq(JobSuggestedParamValue.TABLE.jobSuggestedParamSet + '.' + JobSuggestedParamSet.TABLE.id,
                 jobSuggestedParamSet.id)
             .or(Expr.eq(JobSuggestedParamValue.TABLE.tuningParameter + '.' + TuningParameter.TABLE.paramName,
@@ -223,8 +223,8 @@ public class FitnessComputeUtil {
     }
 
     JobDefinition jobDefinition = tuningJobExecutionParamSets.get(0).jobSuggestedParamSet.jobDefinition;
-    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.where().
-        eq(TuningJobDefinition.TABLE.job + '.' + JobDefinition.TABLE.id, jobDefinition.id).findUnique();
+    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.query().where().
+        eq(TuningJobDefinition.TABLE.job + '.' + JobDefinition.TABLE.id, jobDefinition.id).findOne();
     double baselineFitness =
         tuningJobDefinition.averageResourceUsage * FileUtils.ONE_GB / tuningJobDefinition.averageInputSizeInBytes;
 
@@ -241,9 +241,9 @@ public class FitnessComputeUtil {
    * @param jobDefinition Job for which tuning is to be switched off
    */
   private void disableTuning(JobDefinition jobDefinition, String reason) {
-    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.where()
+    TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.query().where()
         .eq(TuningJobDefinition.TABLE.job + '.' + JobDefinition.TABLE.id, jobDefinition.id)
-        .findUnique();
+        .findOne();
     if (tuningJobDefinition.tuningEnabled) {
       tuningJobDefinition.tuningEnabled = false;
       tuningJobDefinition.tuningDisabledReason = reason;
@@ -262,7 +262,7 @@ public class FitnessComputeUtil {
   private void checkToDisableTuning(Set<JobDefinition> jobDefinitionSet) {
     for (JobDefinition jobDefinition : jobDefinitionSet) {
         List<TuningJobExecutionParamSet> tuningJobExecutionParamSets =
-            TuningJobExecutionParamSet.find.fetch(TuningJobExecutionParamSet.TABLE.jobSuggestedParamSet, "*")
+            TuningJobExecutionParamSet.find.query().fetch(TuningJobExecutionParamSet.TABLE.jobSuggestedParamSet, "*")
                 .fetch(TuningJobExecutionParamSet.TABLE.jobExecution, "*")
                 .where()
                 .eq(TuningJobExecutionParamSet.TABLE.jobSuggestedParamSet + '.'
@@ -310,7 +310,7 @@ public class FitnessComputeUtil {
     logger.info("Fetching completed executions whose fitness are yet to be computed");
     List<TuningJobExecutionParamSet> completedJobExecutionParamSet = new ArrayList<TuningJobExecutionParamSet>();
 
-      List<TuningJobExecutionParamSet> tuningJobExecutionParamSets = TuningJobExecutionParamSet.find.select("*")
+      List<TuningJobExecutionParamSet> tuningJobExecutionParamSets = TuningJobExecutionParamSet.find.query().select("*")
           .fetch(TuningJobExecutionParamSet.TABLE.jobExecution, "*")
           .fetch(TuningJobExecutionParamSet.TABLE.jobSuggestedParamSet, "*")
           .where()
@@ -355,15 +355,15 @@ public class FitnessComputeUtil {
 
       logger.info("Updating execution metrics and fitness for execution: " + jobExecution.jobExecId);
       try {
-        TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.select("*")
+        TuningJobDefinition tuningJobDefinition = TuningJobDefinition.find.query().select("*")
             .fetch(TuningJobDefinition.TABLE.job, "*")
             .where()
             .eq(TuningJobDefinition.TABLE.job + "." + JobDefinition.TABLE.id, job.id)
             .order()
             .desc(TuningJobDefinition.TABLE.createdTs)
-            .findUnique();
+            .findOne();
 
-        List<AppResult> results = AppResult.find.select("*")
+        List<AppResult> results = AppResult.find.query().select("*")
             .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, "*")
             .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS + "." + AppHeuristicResult.TABLE.APP_HEURISTIC_RESULT_DETAILS,
                 "*")
@@ -489,11 +489,11 @@ public class FitnessComputeUtil {
    */
   private JobSuggestedParamSet updateBestJobSuggestedParamSet(JobSuggestedParamSet jobSuggestedParamSet) {
     logger.info("Checking if a new best param set is found for job: " + jobSuggestedParamSet.jobDefinition.jobDefId);
-    JobSuggestedParamSet currentBestJobSuggestedParamSet = JobSuggestedParamSet.find.where()
+    JobSuggestedParamSet currentBestJobSuggestedParamSet = JobSuggestedParamSet.find.query().where()
         .eq(JobSuggestedParamSet.TABLE.jobDefinition + "." + JobDefinition.TABLE.id,
             jobSuggestedParamSet.jobDefinition.id)
         .eq(JobSuggestedParamSet.TABLE.isParamSetBest, 1)
-        .findUnique();
+        .findOne();
     if (currentBestJobSuggestedParamSet != null) {
       if (currentBestJobSuggestedParamSet.fitness > jobSuggestedParamSet.fitness) {
         logger.info("Param set: " + jobSuggestedParamSet.id + " is the new best param set for job: " + jobSuggestedParamSet.jobDefinition.jobDefId);

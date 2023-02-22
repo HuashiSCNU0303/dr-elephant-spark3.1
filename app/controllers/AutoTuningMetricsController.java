@@ -179,7 +179,7 @@ public class AutoTuningMetricsController extends Controller {
    *
    * @return Will return all the metrics in Json format.
    */
-  public static Result index() {
+  public Result index() {
     if (_metricRegistry != null) {
       return ok(Json.toJson(_metricRegistry));
     } else {

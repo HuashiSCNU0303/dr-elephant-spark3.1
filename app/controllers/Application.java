@@ -16,8 +16,8 @@
 
 package controllers;
 
-import com.avaje.ebean.ExpressionList;
-import com.avaje.ebean.Query;
+import io.ebean.ExpressionList;
+import io.ebean.Query;
 import com.codahale.metrics.Timer;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -42,6 +42,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import javax.inject.Inject;
+import play.data.FormFactory;
+
 import models.AppHeuristicResult;
 import models.AppResult;
 
@@ -50,7 +53,7 @@ import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 
-import play.api.templates.Html;
+import play.twirl.api.Html;
 import play.data.DynamicForm;
 import play.data.Form;
 import play.libs.Json;
@@ -120,12 +123,14 @@ public class Application extends Controller {
   private static int _numJobsAnalyzed = 0;
   private static int _numJobsCritical = 0;
   private static int _numJobsSevere = 0;
-
+  
+  @Inject 
+  FormFactory formFactory;
 
   /**
   * Serves the initial index.html page for the new user interface. This page contains the whole web app
   */
-  public static Result serveAsset(String path) {
+  public Result serveAsset(String path) {
     return ok(index.render());
   }
 
@@ -134,26 +139,26 @@ public class Application extends Controller {
    *
    * Displays the latest jobs which were analysed in the last 24 hours.
    */
-  public static Result dashboard() {
+  public Result dashboard() {
     long now = System.currentTimeMillis();
     long finishDate = now - DAY;
 
     // Update statistics only after FETCH_DELAY
     if (now - _lastFetch > FETCH_DELAY) {
-      _numJobsAnalyzed = AppResult.find.where().gt(AppResult.TABLE.FINISH_TIME, finishDate).findRowCount();
-      _numJobsCritical = AppResult.find.where()
+      _numJobsAnalyzed = AppResult.find.query().where().gt(AppResult.TABLE.FINISH_TIME, finishDate).findCount();
+      _numJobsCritical = AppResult.find.query().where()
           .gt(AppResult.TABLE.FINISH_TIME, finishDate)
           .eq(AppResult.TABLE.SEVERITY, Severity.CRITICAL.getValue())
-          .findRowCount();
-      _numJobsSevere = AppResult.find.where()
+          .findCount();
+      _numJobsSevere = AppResult.find.query().where()
           .gt(AppResult.TABLE.FINISH_TIME, finishDate)
           .eq(AppResult.TABLE.SEVERITY, Severity.SEVERE.getValue())
-          .findRowCount();
+          .findCount();
       _lastFetch = now;
     }
 
     // Fetch only required fields for jobs analysed in the last 24 hours up to a max of 50 jobs
-    List<AppResult> results = AppResult.find.select(AppResult.getSearchFields())
+    List<AppResult> results = AppResult.find.query().select(AppResult.getSearchFields())
         .where()
         .gt(AppResult.TABLE.FINISH_TIME, finishDate)
         .order()
@@ -174,7 +179,7 @@ public class Application extends Controller {
    * can probably be derived from the ID in most cases, we would need scheduler specific logic which
    * would be a mess.
    */
-  private static IdUrlPair bestSchedulerInfoMatchLikeValue(String value, String schedulerIdField) {
+  private IdUrlPair bestSchedulerInfoMatchLikeValue(String value, String schedulerIdField) {
     String schedulerUrlField;
     if (schedulerIdField.equals(AppResult.TABLE.FLOW_DEF_ID)) {
       schedulerUrlField = AppResult.TABLE.FLOW_DEF_URL;
@@ -187,13 +192,13 @@ public class Application extends Controller {
     } else {
       throw new RuntimeException(String.format("%s is not a valid scheduler info id field", schedulerIdField));
     }
-    AppResult result = AppResult.find
+    AppResult result = AppResult.find.query()
             .select(String.format("%s, %s", schedulerIdField, schedulerUrlField))
             .where().like(schedulerIdField, value)
             .order()
             .desc(AppResult.TABLE.FINISH_TIME)
             .setMaxRows(1)
-            .findUnique();
+            .findOne();
     if (result != null) {
       if (schedulerIdField.equals(AppResult.TABLE.FLOW_DEF_ID)) {
         return new IdUrlPair(result.flowDefId, result.flowDefUrl);
@@ -211,7 +216,7 @@ public class Application extends Controller {
   /**
    * Given a (possibly) partial scheduler info id, try to find the closest existing id.
    */
-  private static IdUrlPair bestSchedulerInfoMatchGivenPartialId(String partialSchedulerInfoId, String schedulerInfoIdField) {
+  private IdUrlPair bestSchedulerInfoMatchGivenPartialId(String partialSchedulerInfoId, String schedulerInfoIdField) {
     IdUrlPair schedulerInfoPair;
     // check for exact match
     schedulerInfoPair = bestSchedulerInfoMatchLikeValue(partialSchedulerInfoId, schedulerInfoIdField);
@@ -229,8 +234,8 @@ public class Application extends Controller {
   /**
    * Controls the Search Feature
    */
-  public static Result search() {
-    DynamicForm form = Form.form().bindFromRequest(request());
+  public Result search() {
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     String appId = form.get(APP_ID);
     appId = appId != null ? appId.trim() : "";
     if (appId.contains("job")) {
@@ -244,16 +249,18 @@ public class Application extends Controller {
 
     // Search and display job details when job id or flow execution url is provided.
     if (!appId.isEmpty()) {
-      AppResult result = AppResult.find.select("*")
+      AppResult result = AppResult.find.query().select("*")
+          .setFirstRow(0)
+          .setMaxRows(REST_PAGE_LENGTH)
           .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, "*")
           .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS + "." + AppHeuristicResult.TABLE.APP_HEURISTIC_RESULT_DETAILS,
               "*")
           .where()
-          .idEq(appId).findUnique();
+          .idEq(appId).findOne();
       return ok(searchPage.render(null, jobDetails.render(result)));
     } else if (Utils.isSet(partialFlowExecId)) {
       IdUrlPair flowExecPair = bestSchedulerInfoMatchGivenPartialId(partialFlowExecId, AppResult.TABLE.FLOW_EXEC_ID);
-      List<AppResult> results = AppResult.find
+      List<AppResult> results = AppResult.find.query()
           .select(AppResult.getSearchFields() + "," + AppResult.TABLE.JOB_EXEC_ID)
           .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, AppHeuristicResult.getSearchFields())
           .where()
@@ -262,7 +269,7 @@ public class Application extends Controller {
       Map<IdUrlPair, List<AppResult>> map = ControllerUtil.groupJobs(results, ControllerUtil.GroupBy.JOB_EXECUTION_ID);
       return ok(searchPage.render(null, flowDetails.render(flowExecPair, map)));
     } else if (!jobDefId.isEmpty()) {
-      List<AppResult> results = AppResult.find
+      List<AppResult> results = AppResult.find.query()
           .select(AppResult.getSearchFields() + "," + AppResult.TABLE.JOB_DEF_ID)
           .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, AppHeuristicResult.getSearchFields())
           .where()
@@ -305,7 +312,7 @@ public class Application extends Controller {
       List<AppResult> resultsToDisplay = results.subList((currentPage - paginationBarStartIndex) * pageLength,
               Math.min(results.size(), (currentPage - paginationBarStartIndex + 1) * pageLength));
       return ok(searchPage.render(paginationStats, searchResults.render(
-              String.format("Results: Showing %,d of %,d", resultsToDisplay.size(), query.findRowCount()), resultsToDisplay)));
+              String.format("Results: Showing %,d of %,d", resultsToDisplay.size(), query.findCount()), resultsToDisplay)));
     }
   }
 
@@ -314,7 +321,7 @@ public class Application extends Controller {
    *
    * @return URL Encoded String of Parameter Value Pair
    */
-  public static String getQueryString() {
+  public String getQueryString() {
     List<BasicNameValuePair> fields = new LinkedList<BasicNameValuePair>();
     final Set<Map.Entry<String, String[]>> entries = request().queryString().entrySet();
     for (Map.Entry<String, String[]> entry : entries) {
@@ -331,10 +338,10 @@ public class Application extends Controller {
     }
   }
 
-  public static Map<String, String> getSearchParams() {
+  public Map<String, String> getSearchParams() {
     Map<String, String> searchParams = new HashMap<String, String>();
 
-    DynamicForm form = Form.form().bindFromRequest(request());
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     String username = form.get(USERNAME);
     username = username != null ? username.trim().toLowerCase() : null;
     searchParams.put(USERNAME, username);
@@ -359,11 +366,11 @@ public class Application extends Controller {
    * @param searchParams The fields to query on the table
    * @return An sql expression on App Result
    */
-  public static Query<AppResult> generateSearchQuery(String selectParams, Map<String, String> searchParams) {
+  public Query<AppResult> generateSearchQuery(String selectParams, Map<String, String> searchParams) {
     if (searchParams == null || searchParams.isEmpty()) {
-      return AppResult.find.select(selectParams).order().desc(AppResult.TABLE.FINISH_TIME);
+      return AppResult.find.query().select(selectParams).order().desc(AppResult.TABLE.FINISH_TIME);
     }
-    ExpressionList<AppResult> query = AppResult.find.select(selectParams).where();
+    ExpressionList<AppResult> query = AppResult.find.query().select(selectParams).where();
 
     // Build predicates
     String username = searchParams.get(USERNAME);
@@ -433,8 +440,8 @@ public class Application extends Controller {
   /**
    Controls the Compare Feature
    */
-  public static Result compare() {
-    DynamicForm form = Form.form().bindFromRequest(request());
+  public Result compare() {
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     String partialFlowExecId1 = form.get(COMPARE_FLOW_ID1);
     partialFlowExecId1 = (partialFlowExecId1 != null) ? partialFlowExecId1.trim() : null;
     String partialFlowExecId2 = form.get(COMPARE_FLOW_ID2);
@@ -445,13 +452,13 @@ public class Application extends Controller {
     if (partialFlowExecId1 != null && !partialFlowExecId1.isEmpty() && partialFlowExecId2 != null && !partialFlowExecId2.isEmpty()) {
       IdUrlPair flowExecIdPair1 = bestSchedulerInfoMatchGivenPartialId(partialFlowExecId1, AppResult.TABLE.FLOW_EXEC_ID);
       IdUrlPair flowExecIdPair2 = bestSchedulerInfoMatchGivenPartialId(partialFlowExecId2, AppResult.TABLE.FLOW_EXEC_ID);
-      results1 = AppResult.find
+      results1 = AppResult.find.query()
           .select(AppResult.getSearchFields() + "," + AppResult.TABLE.JOB_DEF_ID + "," + AppResult.TABLE.JOB_DEF_URL
               + "," + AppResult.TABLE.FLOW_EXEC_ID + "," + AppResult.TABLE.FLOW_EXEC_URL)
           .where().eq(AppResult.TABLE.FLOW_EXEC_ID, flowExecIdPair1.getId()).setMaxRows(100)
           .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, AppHeuristicResult.getSearchFields())
           .findList();
-      results2 = AppResult.find
+      results2 = AppResult.find.query()
           .select(
               AppResult.getSearchFields() + "," + AppResult.TABLE.JOB_DEF_ID + "," + AppResult.TABLE.JOB_DEF_URL + ","
                   + AppResult.TABLE.FLOW_EXEC_ID + "," + AppResult.TABLE.FLOW_EXEC_URL)
@@ -470,7 +477,7 @@ public class Application extends Controller {
    * @param results2 The list of jobs under flow execution 2
    * @return A map of Job Urls to the list of jobs corresponding to the 2 flow execution urls
    */
-  private static Map<IdUrlPair, Map<IdUrlPair, List<AppResult>>> compareFlows(List<AppResult> results1, List<AppResult> results2) {
+  private Map<IdUrlPair, Map<IdUrlPair, List<AppResult>>> compareFlows(List<AppResult> results1, List<AppResult> results2) {
 
     Map<IdUrlPair, Map<IdUrlPair, List<AppResult>>> jobDefMap = new HashMap<IdUrlPair, Map<IdUrlPair, List<AppResult>>>();
 
@@ -513,14 +520,14 @@ public class Application extends Controller {
   /**
    * Returns the new version of flow history
    */
-  public static Result flowHistory() {
+  public Result flowHistory() {
     return getFlowHistory(Version.NEW);
   }
 
   /**
    * Returns the old version of flow history
    */
-  public static Result oldFlowHistory() {
+  public Result oldFlowHistory() {
     return getFlowHistory(Version.OLD);
   }
 
@@ -530,8 +537,8 @@ public class Application extends Controller {
    * @param version Can be either new or old
    * @return The flowhistory page based on the version provided
    */
-  private static Result getFlowHistory(Version version) {
-    DynamicForm form = Form.form().bindFromRequest(request());
+  private Result getFlowHistory(Version version) {
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     String partialFlowDefId = form.get(FLOW_DEF_ID);
     partialFlowDefId = (partialFlowDefId != null) ? partialFlowDefId.trim() : null;
 
@@ -561,7 +568,7 @@ public class Application extends Controller {
     if (graphType.equals("time") || graphType.equals("resources")) {
 
       // if graph type is time or resources, we don't need the result from APP_HEURISTIC_RESULTS
-      results = AppResult.find.select(
+      results = AppResult.find.query().select(
           AppResult.getSearchFields() + "," + AppResult.TABLE.FLOW_EXEC_ID + "," + AppResult.TABLE.FLOW_EXEC_URL + ","
               + AppResult.TABLE.JOB_DEF_ID + "," + AppResult.TABLE.JOB_DEF_URL + "," + AppResult.TABLE.JOB_NAME)
           .where()
@@ -573,7 +580,7 @@ public class Application extends Controller {
     } else {
 
       // Fetch available flow executions with latest JOB_HISTORY_LIMIT mr jobs.
-      results = AppResult.find.select(
+      results = AppResult.find.query().select(
           AppResult.getSearchFields() + "," + AppResult.TABLE.FLOW_EXEC_ID + "," + AppResult.TABLE.FLOW_EXEC_URL + ","
               + AppResult.TABLE.JOB_DEF_ID + "," + AppResult.TABLE.JOB_DEF_URL + "," + AppResult.TABLE.JOB_NAME)
           .where()
@@ -666,14 +673,14 @@ public class Application extends Controller {
   /**
    * Controls Job History. Displays at max MAX_HISTORY_LIMIT executions. Old version of the job history
    */
-  public static Result oldJobHistory() {
+  public Result oldJobHistory() {
     return getJobHistory(Version.OLD);
   }
 
   /**
    * Controls Job History. Displays at max MAX_HISTORY_LIMIT executions. New version of the job history
    */
-  public static Result jobHistory() {
+  public Result jobHistory() {
     return getJobHistory(Version.NEW);
   }
 
@@ -683,8 +690,8 @@ public class Application extends Controller {
    * @param version The version of job history to return
    * @return The job history page based on the version.
    */
-  private static Result getJobHistory(Version version) {
-    DynamicForm form = Form.form().bindFromRequest(request());
+  private Result getJobHistory(Version version) {
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     String partialJobDefId = form.get(JOB_DEF_ID);
     partialJobDefId = (partialJobDefId != null) ? partialJobDefId.trim() : null;
 
@@ -710,7 +717,7 @@ public class Application extends Controller {
 
     if (graphType.equals("time") || graphType.equals("resources")) {
       // we don't need APP_HEURISTIC_RESULT_DETAILS data to plot for time and resources
-      results = AppResult.find.select(
+      results = AppResult.find.query().select(
           AppResult.getSearchFields() + "," + AppResult.TABLE.FLOW_EXEC_ID + "," + AppResult.TABLE.FLOW_EXEC_URL)
           .where()
           .eq(AppResult.TABLE.JOB_DEF_ID, jobDefPair.getId())
@@ -720,7 +727,7 @@ public class Application extends Controller {
           .findList();
     } else {
       // Fetch all job executions
-      results = AppResult.find.select(
+      results = AppResult.find.query().select(
           AppResult.getSearchFields() + "," + AppResult.TABLE.FLOW_EXEC_ID + "," + AppResult.TABLE.FLOW_EXEC_URL)
           .where()
           .eq(AppResult.TABLE.JOB_DEF_ID, jobDefPair.getId())
@@ -799,8 +806,8 @@ public class Application extends Controller {
    * @param version The version for which help page has to be returned
    * @return The help page based on the version
    */
-  private static Result getHelp(Version version) {
-    DynamicForm form = Form.form().bindFromRequest(request());
+  private Result getHelp(Version version) {
+    DynamicForm form = formFactory.form().bindFromRequest();
     String topic = form.get("topic");
     Html page = null;
     String title = "Help";
@@ -827,19 +834,19 @@ public class Application extends Controller {
   /**
    * Controls the new Help Page
    */
-  public static Result oldHelp() {
+  public Result oldHelp() {
     return getHelp(Version.OLD);
   }
 
   /**
    * Controls the old Help Page
    */
-  public static Result help() {
+  public Result help() {
     return getHelp(Version.NEW);
   }
 
 
-  private static Map<String, Html> getMetricsNameView() {
+  private Map<String, Html> getMetricsNameView() {
     Map<String,Html> metricsViewMap = new HashMap<String, Html>();
     metricsViewMap.put(Metrics.RUNTIME.getText(), helpRuntime.render());
     metricsViewMap.put(Metrics.WAIT_TIME.getText(), helpWaittime.render());
@@ -853,7 +860,7 @@ public class Application extends Controller {
    * @param time The string to be parsed
    * @return the epoch value
    */
-  private static long parseTime(String time) {
+  private long parseTime(String time) {
     long unixTime = 0;
     try {
       unixTime = Long.parseLong(time);
@@ -863,20 +870,22 @@ public class Application extends Controller {
     return unixTime;
   }
 
-  private static AppResult getAppResultForId(String id) {
-    return AppResult.find.select("*")
+  private AppResult getAppResultForId(String id) {
+    return AppResult.find.query().select("*")
+        .setFirstRow(0)
+        .setMaxRows(REST_PAGE_LENGTH)
         .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, "*")
         .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS + "." + AppHeuristicResult.TABLE.APP_HEURISTIC_RESULT_DETAILS, "*")
         .where()
         .idEq(id)
-        .findUnique();
+        .findOne();
   }
 
   /**
    * Rest API for searching a particular job information
    * E.g, localhost:8080/rest/job?id=xyz&prioritize=true
    */
-  public static Result restAppResult(String id, Boolean prioritize) {
+  public Result restAppResult(String id, Boolean prioritize) {
 
     if (id == null || id.isEmpty()) {
       return badRequest("No job id provided.");
@@ -905,7 +914,7 @@ public class Application extends Controller {
    * Rest API for getting current run parameters from auto tuning framework
    * @return
    */
-  public static Result getCurrentRunParameters() {
+  public Result getCurrentRunParameters() {
     final Timer.Context context = AutoTuningMetricsController.getCurrentRunParametersTimerContext();
     String jsonString = request().body().asJson().toString();
     logger.debug("Started processing getCurrentRunParameters request with following parameters " + jsonString);
@@ -986,7 +995,7 @@ public class Application extends Controller {
     }
   }
 
-  private static JsonNode formatGetCurrentRunParametersOutput(Map<String, Double> outputParams, Integer version) {
+  private JsonNode formatGetCurrentRunParametersOutput(Map<String, Double> outputParams, Integer version) {
     if (version == 1) {
       return Json.toJson(outputParams);
     } else {
@@ -1010,7 +1019,7 @@ public class Application extends Controller {
     }
   }
 
-  private static Result getCurrentRunParameters(TuningInput tuningInput) throws Exception {
+  private Result getCurrentRunParameters(TuningInput tuningInput) throws Exception {
     AutoTuningAPIHelper autoTuningAPIHelper = new AutoTuningAPIHelper();
     Map<String, Double> outputParams = autoTuningAPIHelper.getCurrentRunParameters(tuningInput);
     if (outputParams != null) {
@@ -1027,13 +1036,15 @@ public class Application extends Controller {
    * Rest API for searching all jobs triggered by a particular Scheduler Job
    * E.g., localhost:8080/rest/jobexec?id=xyz
    */
-  public static Result restJobExecResult(String jobExecId) {
+  public Result restJobExecResult(String jobExecId) {
 
     if (jobExecId == null || jobExecId.isEmpty()) {
       return badRequest("No job exec url provided.");
     }
 
-    List<AppResult> result = AppResult.find.select("*")
+    List<AppResult> result = AppResult.find.query().select("*")
+        .setFirstRow(0)
+        .setMaxRows(REST_PAGE_LENGTH)
         .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, "*")
         .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS + "." + AppHeuristicResult.TABLE.APP_HEURISTIC_RESULT_DETAILS, "*")
         .where()
@@ -1051,13 +1062,15 @@ public class Application extends Controller {
    * Rest API for searching all jobs under a particular flow execution
    * E.g., localhost:8080/rest/flowexec?id=xyz
    */
-  public static Result restFlowExecResult(String flowExecId) {
+  public Result restFlowExecResult(String flowExecId) {
 
     if (flowExecId == null || flowExecId.isEmpty()) {
       return badRequest("No flow exec url provided.");
     }
 
-    List<AppResult> results = AppResult.find.select("*")
+    List<AppResult> results = AppResult.find.query().select("*")
+        .setFirstRow(0)
+        .setMaxRows(REST_PAGE_LENGTH)
         .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, "*")
         .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS + "." + AppHeuristicResult.TABLE.APP_HEURISTIC_RESULT_DETAILS, "*")
         .where()
@@ -1089,8 +1102,8 @@ public class Application extends Controller {
    *
    * http://localhost:8080/rest/search?username=abc&job-type=HadoopJava
    */
-  public static Result restSearch() {
-    DynamicForm form = Form.form().bindFromRequest(request());
+  public Result restSearch() {
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     String appId = form.get(APP_ID);
     appId = appId != null ? appId.trim() : "";
     if (appId.contains("job")) {
@@ -1099,20 +1112,24 @@ public class Application extends Controller {
     String flowExecId = form.get(FLOW_EXEC_ID);
     flowExecId = (flowExecId != null) ? flowExecId.trim() : null;
     if (!appId.isEmpty()) {
-      AppResult result = AppResult.find.select("*")
+      AppResult result = AppResult.find.query().select("*")
+          .setFirstRow(0)
+          .setMaxRows(REST_PAGE_LENGTH)
           .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, "*")
           .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS + "." + AppHeuristicResult.TABLE.APP_HEURISTIC_RESULT_DETAILS,
               "*")
           .where()
           .idEq(appId)
-          .findUnique();
+          .findOne();
       if (result != null) {
         return ok(Json.toJson(result));
       } else {
         return notFound("Unable to find record on id: " + appId);
       }
     } else if (flowExecId != null && !flowExecId.isEmpty()) {
-      List<AppResult> results = AppResult.find.select("*")
+      List<AppResult> results = AppResult.find.query().select("*")
+          .setFirstRow(0)
+          .setMaxRows(REST_PAGE_LENGTH)
           .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, "*")
           .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS + "." + AppHeuristicResult.TABLE.APP_HEURISTIC_RESULT_DETAILS,
               "*")
@@ -1152,8 +1169,8 @@ public class Application extends Controller {
    * The Rest API for Compare Feature
    * E.g., localhost:8080/rest/compare?flow-exec-id1=abc&flow-exec-id2=xyz
    */
-  public static Result restCompare() {
-    DynamicForm form = Form.form().bindFromRequest(request());
+  public Result restCompare() {
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     String flowExecId1 = form.get(COMPARE_FLOW_ID1);
     flowExecId1 = (flowExecId1 != null) ? flowExecId1.trim() : null;
     String flowExecId2 = form.get(COMPARE_FLOW_ID2);
@@ -1162,7 +1179,7 @@ public class Application extends Controller {
     List<AppResult> results1 = null;
     List<AppResult> results2 = null;
     if (flowExecId1 != null && !flowExecId1.isEmpty() && flowExecId2 != null && !flowExecId2.isEmpty()) {
-      results1 = AppResult.find.select("*")
+      results1 = AppResult.find.query().select("*")
           .where()
           .eq(AppResult.TABLE.FLOW_EXEC_ID, flowExecId1)
           .setMaxRows(100)
@@ -1170,7 +1187,7 @@ public class Application extends Controller {
           .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS + "." + AppHeuristicResult.TABLE.APP_HEURISTIC_RESULT_DETAILS,
               "*")
           .findList();
-      results2 = AppResult.find.select("*")
+      results2 = AppResult.find.query().select("*")
           .where()
           .eq(AppResult.TABLE.FLOW_EXEC_ID, flowExecId2)
           .setMaxRows(100)
@@ -1240,7 +1257,7 @@ public class Application extends Controller {
    * }
    * </pre>
    */
-  public static Result restFlowGraphData(String flowDefId) {
+  public Result restFlowGraphData(String flowDefId) {
     JsonArray datasets = new JsonArray();
     if (flowDefId == null || flowDefId.isEmpty()) {
       return ok(new Gson().toJson(datasets));
@@ -1338,7 +1355,7 @@ public class Application extends Controller {
    * }
    * </pre>
    */
-  public static Result restJobGraphData(String jobDefId) {
+  public Result restJobGraphData(String jobDefId) {
     JsonArray datasets = new JsonArray();
     if (jobDefId == null || jobDefId.isEmpty()) {
       return ok(new Gson().toJson(datasets));
@@ -1432,7 +1449,7 @@ public class Application extends Controller {
    *
    * </pre>
    */
-  public static Result restJobMetricsGraphData(String jobDefId) {
+  public Result restJobMetricsGraphData(String jobDefId) {
     JsonArray datasets = new JsonArray();
     if (jobDefId == null || jobDefId.isEmpty()) {
       return ok(new Gson().toJson(datasets));
@@ -1507,7 +1524,7 @@ public class Application extends Controller {
    *        {"user":"payments","resourceUsed":18432,"resourceWasted":3447},
    *        {"user":"myu","resourceUsed":558211072,"resourceWasted":81573818}]
    */
-  public static Result restResourceUsageDataByUser(String startTime, String endTime) {
+  public Result restResourceUsageDataByUser(String startTime, String endTime) {
     try {
       JsonArray datasets = new JsonArray();
       if(startTime.length() != endTime.length() ||
@@ -1573,7 +1590,7 @@ public class Application extends Controller {
    *}
    *]
    **/
-  public static Result restFlowMetricsGraphData(String flowDefId) {
+  public Result restFlowMetricsGraphData(String flowDefId) {
     JsonArray datasets = new JsonArray();
     if (flowDefId == null || flowDefId.isEmpty()) {
       return ok(new Gson().toJson(datasets));
@@ -1654,8 +1671,8 @@ public class Application extends Controller {
    * Returns a list of AppResults after quering the FLOW_EXEC_ID from the database
    * @return The list of AppResults
    */
-  private static List<AppResult> getRestJobAppResults(String jobDefId) {
-    List<AppResult> results = AppResult.find.select(
+  private List<AppResult> getRestJobAppResults(String jobDefId) {
+    List<AppResult> results = AppResult.find.query().select(
         AppResult.getSearchFields() + "," + AppResult.TABLE.FLOW_EXEC_ID + "," + AppResult.TABLE.FLOW_EXEC_URL)
         .where()
         .eq(AppResult.TABLE.JOB_DEF_ID, jobDefId)
@@ -1672,9 +1689,9 @@ public class Application extends Controller {
    * Returns the list of AppResults after quering the FLOW_DEF_ID from the database
    * @return The list of AppResults
    */
-  private static List<AppResult> getRestFlowAppResults(String flowDefId) {
+  private List<AppResult> getRestFlowAppResults(String flowDefId) {
     // Fetch available flow executions with latest JOB_HISTORY_LIMIT mr jobs.
-    List<AppResult> results = AppResult.find.select("*")
+    List<AppResult> results = AppResult.find.query().select("*")
         .where()
         .eq(AppResult.TABLE.FLOW_DEF_ID, flowDefId)
         .order()
@@ -1685,7 +1702,7 @@ public class Application extends Controller {
     return results;
   }
 
-  private static class AppResourceUsageData {
+  private class AppResourceUsageData {
     String user;
     double resourceUsed;
     double resourceWasted;
@@ -1695,11 +1712,11 @@ public class Application extends Controller {
    * Returns the list of users with their resourceUsed and resourceWasted Data for the given time range
    * @return list of AppResourceUsageData
    **/
-  private static Collection<AppResourceUsageData> getUserResourceUsage(Date start, Date end) {
+  private Collection<AppResourceUsageData> getUserResourceUsage(Date start, Date end) {
     long resourceUsed = 0;
     Map<String, AppResourceUsageData> userResourceUsage = new HashMap<String, AppResourceUsageData>();
     // Fetch all the appresults for the given time range [startTime, endTime).
-    List<AppResult> results = AppResult.find.select("*")
+    List<AppResult> results = AppResult.find.query().select("*")
         .where()
         .ge(AppResult.TABLE.START_TIME, start.getTime())
         .lt(AppResult.TABLE.START_TIME, end.getTime()).findList();

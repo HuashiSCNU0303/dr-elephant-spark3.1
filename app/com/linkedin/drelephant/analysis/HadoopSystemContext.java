@@ -26,6 +26,7 @@ public final class HadoopSystemContext {
 
   private static final String MAPREDUCE_FRAMEWORK_NAME_PROP = "mapreduce.framework.name";
   private static final String YARN = "yarn";
+  private static final String YARN_NUM = "1";
 
   /**
    * Detect if the current Hadoop environment is 2.x
@@ -35,7 +36,8 @@ public final class HadoopSystemContext {
   public static boolean isHadoop2Env() {
     Configuration hadoopConf = new Configuration();
     String hadoopVersion = hadoopConf.get(MAPREDUCE_FRAMEWORK_NAME_PROP);
-    return hadoopVersion != null && hadoopVersion.equals(YARN);
+    System.out.println("Hadoop version is " + hadoopVersion);
+    return hadoopVersion != null && hadoopVersion.equals(YARN_NUM);
   }
 
   /**

@@ -73,7 +73,7 @@ class ConfigurationHeuristic(private val heuristicConfigurationData: HeuristicCo
       ),
       new HeuristicResultDetails(
         SPARK_APPLICATION_DURATION,
-        evaluator.applicationDuration.toString + " Seconds"
+        evaluator.applicationDuration.toString + " Milliseconds"
       ),
       new HeuristicResultDetails(
         SPARK_DYNAMIC_ALLOCATION_ENABLED,
@@ -183,7 +183,7 @@ object ConfigurationHeuristic {
     lazy val applicationDuration: Long = {
       require(data.applicationInfo.attempts.nonEmpty)
       val lastApplicationAttemptInfo = data.applicationInfo.attempts.last
-      (lastApplicationAttemptInfo.endTime.getTime - lastApplicationAttemptInfo.startTime.getTime) / Statistics.SECOND_IN_MS
+      (lastApplicationAttemptInfo.endTime.getTime - lastApplicationAttemptInfo.startTime.getTime)
     }
 
     lazy val sparkYarnJars: String = getProperty(SPARK_YARN_JARS).getOrElse("")

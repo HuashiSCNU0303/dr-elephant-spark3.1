@@ -16,8 +16,8 @@
 
 package com.linkedin.drelephant.tuning;
 
-import com.avaje.ebean.Ebean;
-import com.avaje.ebean.SqlRow;
+import io.ebean.Ebean;
+import io.ebean.SqlRow;
 import com.linkedin.drelephant.ElephantContext;
 import com.linkedin.drelephant.mapreduce.heuristics.CommonConstantsHeuristic;
 import com.linkedin.drelephant.util.Utils;
@@ -89,7 +89,7 @@ public class BaselineComputeUtil {
   private List<TuningJobDefinition> getJobForBaselineComputation() {
     logger.info("Fetching jobs for which baseline metrics need to be computed");
     List<TuningJobDefinition> tuningJobDefinitions =
-        TuningJobDefinition.find.where().eq(TuningJobDefinition.TABLE.averageResourceUsage, null).findList();
+        TuningJobDefinition.find.query().where().eq(TuningJobDefinition.TABLE.averageResourceUsage, null).findList();
     return tuningJobDefinitions;
   }
 
@@ -112,7 +112,7 @@ public class BaselineComputeUtil {
     SqlRow baseline = Ebean.createSqlQuery(sql)
         .setParameter("jobDefId", tuningJobDefinition.job.jobDefId)
         .setParameter("num", _numJobsForBaseline)
-        .findUnique();
+        .findOne();
 
     Double avgResourceUsage = 0D;
     Double avgExecutionTime = 0D;
@@ -147,7 +147,7 @@ public class BaselineComputeUtil {
     SqlRow baseline = Ebean.createSqlQuery(sql)
         .setParameter("jobDefId", jobDefId)
         .setParameter("num", _numJobsForBaseline)
-        .findUnique();
+        .findOne();
     Double avgInputSizeInBytes = baseline.getDouble("avgInputSizeInMB") * FileUtils.ONE_MB;
     return avgInputSizeInBytes.longValue();
   }

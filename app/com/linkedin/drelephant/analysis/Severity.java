@@ -16,7 +16,7 @@
 
 package com.linkedin.drelephant.analysis;
 
-import com.avaje.ebean.annotation.EnumValue;
+import io.ebean.annotation.EnumValue;
 
 
 /**

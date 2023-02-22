@@ -21,7 +21,8 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
-import play.db.ebean.Model;
+import io.ebean.Model;
+import io.ebean.Finder;
 
 @Entity
 @Table(name = "backfill_info")
@@ -50,5 +51,5 @@ public class BackfillInfo extends Model {
   @Column(nullable = false)
   public long backfillTs;
 
-  public static Finder<String, BackfillInfo> find = new Finder<String, BackfillInfo>(String.class, BackfillInfo.class);
+  public static Finder<String, BackfillInfo> find = new Finder<String, BackfillInfo>(BackfillInfo.class);
 }

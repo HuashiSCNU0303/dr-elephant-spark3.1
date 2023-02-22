@@ -16,8 +16,10 @@
 
 package com.linkedin.drelephant;
 
-import com.avaje.ebean.Ebean;
-import com.avaje.ebean.TxRunnable;
+// import com.avaje.ebean.Ebean;
+// import com.avaje.ebean.TxRunnable;
+import io.ebean.Ebean;
+import java.lang.Runnable;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.linkedin.drelephant.analysis.AnalyticJob;
@@ -46,7 +48,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import models.AppResult;
 import models.BackfillInfo;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.Time;
@@ -263,7 +265,7 @@ public class ElephantRunner implements Runnable {
   }
 
   private List<BackfillData> populateAndGetBackfillInfoData(long lowestFinishTime) {
-    List<BackfillInfo> backfillInfos = BackfillInfo.find.select("*").findList();
+    List<BackfillInfo> backfillInfos = BackfillInfo.find.query().select("*").findList();
     // No data in backfill_info table.
     if (backfillInfos == null) {
       return null;
@@ -393,8 +395,9 @@ public class ElephantRunner implements Runnable {
           finishTimeInfo = _appTypeToFinishTimeInfo.get(appType);
           final BackfillInfo backfillInfo = getBackfillInfoForSave(finishTimeInfo, appType, applicableFinishTime);
           jobFinishTime = result.finishTime;
+          logger.info("start time = " + result.startTime);
           // Execute as a transaction.
-          Ebean.execute(new TxRunnable() {
+          Ebean.execute(new Runnable() {
             public void run() {
               result.save();
               if (backfillInfo != null) {

@@ -19,7 +19,7 @@ package com.linkedin.drelephant.util;
 import java.text.DecimalFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 
 /**
@@ -70,7 +70,8 @@ public class MemoryFormatUtils {
    */
   public static String bytesToString(long value) {
     if (value < 0) {
-      throw new IllegalArgumentException("Invalid memory size: " + value);
+//      throw new IllegalArgumentException("Invalid memory size: " + value);
+      value = 0; // 跑失败的任务的spark log不知道为啥会出现负数的byte，没法解析，改了一下
     }
     for (int i = 0; i < UNITS.length; i++) {
       long bytes = UNITS[i].getBytes();

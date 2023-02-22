@@ -159,7 +159,7 @@ HADOOP_VERSION=$(hadoop version | awk '{if (NR == 1) {print $2;}}')
 if [[ $HADOOP_VERSION == 1* ]];
 then
   echo "This is hadoop1.x grid. Switch to hadoop2 if you want to use Dr. Elephant"
-elif [[ $HADOOP_VERSION == 2* ]];
+elif [[ $HADOOP_VERSION == 3* ]];
 then
   JAVA_LIB_PATH=$HADOOP_HOME"/lib/native"
   echo "This is hadoop2.x grid. Adding Java library to path: "$JAVA_LIB_PATH

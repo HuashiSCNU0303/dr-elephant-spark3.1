@@ -31,9 +31,10 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import com.avaje.ebean.annotation.UpdatedTimestamp;
+import io.ebean.annotation.UpdatedTimestamp;
 
-import play.db.ebean.Model;
+import io.ebean.Model;
+import io.ebean.Finder;
 
 
 @Entity
@@ -107,5 +108,5 @@ public class JobExecution extends Model {
     super.update();
   }
 
-  public static Finder<Long, JobExecution> find = new Finder<Long, JobExecution>(Long.class, JobExecution.class);
+  public static Finder<Long, JobExecution> find = new Finder<Long, JobExecution>(JobExecution.class);
 }

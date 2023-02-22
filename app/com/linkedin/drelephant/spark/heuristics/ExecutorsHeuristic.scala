@@ -57,6 +57,8 @@ class ExecutorsHeuristic(private val heuristicConfigurationData: HeuristicConfig
 
   override def apply(data: SparkApplicationData): HeuristicResult = {
     val evaluator = new Evaluator(this, data)
+    
+    println("executor heuristic: " + data.executorSummaries.size)
 
     def formatDistribution(distribution: Distribution, longFormatter: Long => String, separator: String = ", "): String = {
       val labels = Seq(

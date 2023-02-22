@@ -20,7 +20,7 @@ import com.linkedin.drelephant.configurations.scheduler.SchedulerConfigurationDa
 import com.linkedin.drelephant.util.Utils;
 import org.apache.log4j.Logger;
 import org.apache.oozie.client.*;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import java.util.Properties;
 
 

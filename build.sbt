@@ -14,7 +14,6 @@
 // the License.
 //
 
-import play.Project._
 import Dependencies._
 
 name := "dr-elephant"
@@ -24,20 +23,29 @@ version := "2.1.7"
 organization := "com.linkedin.drelephant"
 
 // Enable CPD SBT plugin
-lazy val root = (project in file(".")).enablePlugins(CopyPasteDetector)
+lazy val root = (project in file("."))
+  .enablePlugins(PlayJava, PlayEbean)
 
 javacOptions in Compile ++= Seq("-source", "1.8", "-target", "1.8")
 
+libraryDependencies ++= Seq(
+  javaJdbc,
+  cache,
+  javaWs)
+
 libraryDependencies ++= dependencies map { _.excludeAll(exclusionRules: _*) }
+libraryDependencies += guice
+libraryDependencies += "org.slf4j" % "slf4j-simple" % "1.7.26" % Provided
+
+// routesGenerator := StaticRoutesGenerator
 
 // Create a new custom configuration called compileonly
-ivyConfigurations += config("compileonly").hide
+val CompileOnly = config("compileonly").hide
+ivyConfigurations += CompileOnly
 
 // Append all dependencies with 'compileonly' configuration to unmanagedClasspath in Compile.
 unmanagedClasspath in Compile ++= update.value.select(configurationFilter("compileonly"))
 
-playJavaSettings
-
-scalaVersion := "2.10.4"
+scalaVersion := "2.12.10"
 
 envVars in Test := Map("PSO_DIR_PATH" -> (baseDirectory.value / "scripts/pso").getAbsolutePath)

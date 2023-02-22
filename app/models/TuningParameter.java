@@ -29,10 +29,10 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import com.avaje.ebean.annotation.UpdatedTimestamp;
+import io.ebean.annotation.UpdatedTimestamp;
 
-import play.db.ebean.Model;
-
+import io.ebean.Model;
+import io.ebean.Finder;
 
 @Entity
 @Table(name = "tuning_parameter")
@@ -92,7 +92,7 @@ public class TuningParameter extends Model {
   public Integer isDerived;
 
   public static Finder<Integer, TuningParameter> find =
-      new Finder<Integer, TuningParameter>(Integer.class, TuningParameter.class);
+      new Finder<Integer, TuningParameter>(TuningParameter.class);
 
   @Override
   public void save() {

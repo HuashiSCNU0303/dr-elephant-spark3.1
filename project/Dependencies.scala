@@ -14,7 +14,6 @@
 // the License.
 //
 
-import play.Project._
 import sbt._
 
 object Dependencies {
@@ -28,25 +27,25 @@ object Dependencies {
   lazy val jacksonVersion = "2.5.3"
   lazy val jerseyVersion = "2.24"
   lazy val jsoupVersion = "1.7.3"
-  lazy val mysqlConnectorVersion = "5.1.36"
+  lazy val mysqlConnectorVersion = "8.0.11"
   lazy val oozieClientVersion = "4.2.0"
   lazy val tonyVersion = "0.3.16"
 
   lazy val HADOOP_VERSION = "hadoopversion"
   lazy val SPARK_VERSION = "sparkversion"
 
-  var hadoopVersion = "2.3.0"
+  var hadoopVersion = "3.2.4"
   if (System.getProperties.getProperty(HADOOP_VERSION) != null) {
     hadoopVersion = System.getProperties.getProperty(HADOOP_VERSION)
   }
 
-  var sparkVersion = "1.4.0"
+  var sparkVersion = "3.0.3"
   if (System.getProperties.getProperty(SPARK_VERSION) != null) {
     sparkVersion = System.getProperties.getProperty(SPARK_VERSION)
   }
 
   val sparkExclusion = if (sparkVersion >= "1.5.0") {
-    "org.apache.spark" % "spark-core_2.10" % sparkVersion excludeAll(
+    "org.apache.spark" % "spark-core_2.12" % sparkVersion excludeAll(
       ExclusionRule(organization = "com.typesafe.akka"),
       ExclusionRule(organization = "org.apache.avro"),
       ExclusionRule(organization = "org.apache.hadoop"),
@@ -64,7 +63,7 @@ object Dependencies {
   var requiredDep = Seq(
     "com.google.code.gson" % "gson" % gsonVersion,
     "com.google.guava" % "guava" % guavaVersion,
-    "com.jsuereth" %% "scala-arm" % "1.4",
+    "com.jsuereth" %% "scala-arm" % "2.0",
     "commons-codec" % "commons-codec" % commonsCodecVersion,
     "commons-io" % "commons-io" % commonsIoVersion,
     "javax.ws.rs" % "javax.ws.rs-api" % "2.0.1",
@@ -88,9 +87,8 @@ object Dependencies {
     "org.glassfish.jersey.test-framework" % "jersey-test-framework-core" % jerseyVersion % Test,
     "org.glassfish.jersey.test-framework.providers" % "jersey-test-framework-provider-grizzly2" % jerseyVersion % Test,
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
-    "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion,
-    "io.dropwizard.metrics" % "metrics-core" % "3.1.2",
-    "io.dropwizard.metrics" % "metrics-healthchecks" % "3.1.2",
+    "io.dropwizard.metrics" % "metrics-core" % "4.0.3",
+    "io.dropwizard.metrics" % "metrics-healthchecks" % "4.0.3",
     "org.mockito" % "mockito-core" % "1.10.19" exclude ("org.hamcrest", "hamcrest-core"),
     "org.jmockit" % "jmockit" % "1.23" % Test,
     "org.apache.httpcomponents" % "httpclient" % "4.5.2",
@@ -103,8 +101,7 @@ object Dependencies {
     )
   ) :+ sparkExclusion
 
-  var dependencies = Seq(javaJdbc, javaEbean, cache)
-  dependencies ++= requiredDep
+  var dependencies = requiredDep
 
   val exclusionRules = Seq(
     ExclusionRule(organization = "com.sun.jersey", name = "jersey-core"),

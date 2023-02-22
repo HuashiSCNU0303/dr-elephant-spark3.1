@@ -16,12 +16,12 @@
 
 package controllers.api.v1;
 
-import com.avaje.ebean.Query;
-import com.avaje.ebean.Junction;
-import com.avaje.ebean.ExpressionList;
-import com.avaje.ebean.SqlRow;
-import com.avaje.ebean.SqlQuery;
-import com.avaje.ebean.Ebean;
+import io.ebean.Query;
+import io.ebean.Junction;
+import io.ebean.ExpressionList;
+import io.ebean.SqlRow;
+import io.ebean.SqlQuery;
+import io.ebean.Ebean;
 
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
@@ -52,11 +52,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Arrays;
 
+import javax.inject.Inject;
+import play.data.FormFactory;
+
 import javax.naming.AuthenticationException;
 import models.AppHeuristicResult;
 import models.AppHeuristicResultDetails;
 import models.AppResult;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import play.data.DynamicForm;
 import play.data.Form;
@@ -91,37 +94,47 @@ public class Web extends Controller {
   private static int _numJobsModerate = 0;
   private static int _numJobsLow = 0;
   private static int _numJobsNone = 0;
+  
+  // @Inject 
+  FormFactory formFactory;
+  Application appli;
+  
+  @Inject
+  public Web(Application application, FormFactory formFactory) {
+      this.appli = application;
+      this.formFactory = formFactory;
+  }
 
   /**
    * Returns the json object for the dashboard summaries of jobs analzyed in last day.
    */
-  public static Result restDashboardSummaries() {
+  public Result restDashboardSummaries() {
 
     long now = System.currentTimeMillis();
     long finishDate = now - DAY;
 
     //Update statistics only after FETCH_DELAY
     if (now - _lastFetch > FETCH_DELAY) {
-      _numJobsAnalyzed = AppResult.find.where()
+      _numJobsAnalyzed = AppResult.find.query().where()
           .gt(AppResult.TABLE.FINISH_TIME, finishDate)
-          .findRowCount();
-      _numJobsCritical = AppResult.find.where()
+          .findCount();
+      _numJobsCritical = AppResult.find.query().where()
           .gt(AppResult.TABLE.FINISH_TIME, finishDate)
           .eq(AppResult.TABLE.SEVERITY, Severity.CRITICAL.getValue())
-          .findRowCount();
-      _numJobsSevere = AppResult.find.where()
+          .findCount();
+      _numJobsSevere = AppResult.find.query().where()
           .gt(AppResult.TABLE.FINISH_TIME, finishDate)
           .eq(AppResult.TABLE.SEVERITY, Severity.SEVERE.getValue())
-          .findRowCount();
-      _numJobsModerate = AppResult.find.where().gt(AppResult.TABLE.FINISH_TIME, finishDate)
+          .findCount();
+      _numJobsModerate = AppResult.find.query().where().gt(AppResult.TABLE.FINISH_TIME, finishDate)
           .eq(AppResult.TABLE.SEVERITY, Severity.MODERATE.getValue())
-          .findRowCount();
-      _numJobsLow = AppResult.find.where().gt(AppResult.TABLE.FINISH_TIME, finishDate)
+          .findCount();
+      _numJobsLow = AppResult.find.query().where().gt(AppResult.TABLE.FINISH_TIME, finishDate)
           .eq(AppResult.TABLE.SEVERITY, Severity.LOW.getValue())
-          .findRowCount();
-      _numJobsNone = AppResult.find.where().gt(AppResult.TABLE.FINISH_TIME, finishDate)
+          .findCount();
+      _numJobsNone = AppResult.find.query().where().gt(AppResult.TABLE.FINISH_TIME, finishDate)
           .eq(AppResult.TABLE.SEVERITY, Severity.NONE.getValue())
-          .findRowCount();
+          .findCount();
       _lastFetch = now;
     }
 
@@ -145,8 +158,8 @@ public class Web extends Controller {
    * @param maxApplications The max number of applications that should be fetched
    * @return The list of Applications that should for the given username limit by maxApplications
    */
-  private static List<AppResult> getApplications(String username, int maxApplications) {
-    List<AppResult> results = AppResult.find.select("*").where().eq(AppResult.TABLE.USERNAME, username).order()
+  private List<AppResult> getApplications(String username, int maxApplications) {
+    List<AppResult> results = AppResult.find.query().select("*").where().eq(AppResult.TABLE.USERNAME, username).order()
         .desc(AppResult.TABLE.FINISH_TIME).setMaxRows(maxApplications).findList();
     return results;
   }
@@ -156,9 +169,9 @@ public class Web extends Controller {
    * @param maxApplications The max number of applications that should be fetched
    * @return The list of Applications limit by maxApplications
    */
-  private static List<AppResult> getApplications(int maxApplications) {
+  private List<AppResult> getApplications(int maxApplications) {
     List<AppResult> results =
-        AppResult.find.select("*").order().desc(AppResult.TABLE.FINISH_TIME).setMaxRows(maxApplications).findList();
+        AppResult.find.query().select("*").order().desc(AppResult.TABLE.FINISH_TIME).setMaxRows(maxApplications).findList();
     return results;
   }
 
@@ -168,9 +181,9 @@ public class Web extends Controller {
    * @param maxApplications The max number of applications that should be fetched
    * @return The list of Applications scheduled by a scheduler that should be fetched for the given username limit by maxApplications
    */
-  private static List<AppResult> getSchedulerApplications(String username, int maxApplications) {
+  private List<AppResult> getSchedulerApplications(String username, int maxApplications) {
     List<AppResult> results =
-        AppResult.find.select("*").where().eq(AppResult.TABLE.USERNAME, username).ne(AppResult.TABLE.FLOW_EXEC_ID, null)
+        AppResult.find.query().select("*").where().eq(AppResult.TABLE.USERNAME, username).ne(AppResult.TABLE.FLOW_EXEC_ID, null)
             .ne(AppResult.TABLE.FLOW_EXEC_ID, "").order().desc(AppResult.TABLE.FINISH_TIME).setMaxRows(maxApplications)
             .findList();
     return results;
@@ -181,9 +194,9 @@ public class Web extends Controller {
    * @param maxApplications The max number of applications that should be fetched
    * @return The list of Applications scheduled by a scheduler limit by maxApplications
    */
-  private static List<AppResult> getSchedulerApplications(int maxApplications) {
+  private List<AppResult> getSchedulerApplications(int maxApplications) {
     List<AppResult> results =
-        AppResult.find.select("*").where().ne(AppResult.TABLE.FLOW_EXEC_ID, null).ne(AppResult.TABLE.FLOW_EXEC_ID, "")
+        AppResult.find.query().select("*").where().ne(AppResult.TABLE.FLOW_EXEC_ID, null).ne(AppResult.TABLE.FLOW_EXEC_ID, "")
             .order().desc(AppResult.TABLE.FINISH_TIME).setMaxRows(maxApplications).findList();
     return results;
   }
@@ -193,8 +206,8 @@ public class Web extends Controller {
    * @param flowExecId The flow execution id of the flow
    * @return The list of AppResult filtered by flow execution id
    */
-  private static List<AppResult> getRestFlowResultsFromFlowExecutionId(String flowExecId) {
-    List<AppResult> results = AppResult.find.select("*").where().eq(AppResult.TABLE.FLOW_EXEC_ID, flowExecId).order()
+  private List<AppResult> getRestFlowResultsFromFlowExecutionId(String flowExecId) {
+    List<AppResult> results = AppResult.find.query().select("*").where().eq(AppResult.TABLE.FLOW_EXEC_ID, flowExecId).order()
         .desc(AppResult.TABLE.FINISH_TIME).findList();
     return results;
   }
@@ -206,9 +219,9 @@ public class Web extends Controller {
    * @param jobExecId The job execution id of the job
    * @return The list of AppResult filtered by job execution id
    */
-  private static List<AppResult> getRestJobResultsFromJobExecutionId(String jobExecId) {
+  private List<AppResult> getRestJobResultsFromJobExecutionId(String jobExecId) {
     List<AppResult> results =
-        AppResult.find.select(AppResult.getSearchFields()).where().eq(AppResult.TABLE.JOB_EXEC_ID, jobExecId).order()
+        AppResult.find.query().select(AppResult.getSearchFields()).where().eq(AppResult.TABLE.JOB_EXEC_ID, jobExecId).order()
             .desc(AppResult.TABLE.FINISH_TIME)
             .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, AppHeuristicResult.getSearchFields()).findList();
     return results;
@@ -219,10 +232,10 @@ public class Web extends Controller {
    * @param applicationId The application id of the application
    * @return The AppResult for the given application Id
    */
-  private static AppResult getAppResultFromApplicationId(String applicationId) {
-    AppResult result = AppResult.find.select("*").fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, "*")
+  private AppResult getAppResultFromApplicationId(String applicationId) {
+    AppResult result = AppResult.find.query().select("*").fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, "*")
         .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS + "." + AppHeuristicResult.TABLE.APP_HEURISTIC_RESULT_DETAILS, "*")
-        .where().idEq(applicationId).order().desc(AppResult.TABLE.FINISH_TIME).findUnique();
+        .where().idEq(applicationId).setMaxRows(1).order().desc(AppResult.TABLE.FINISH_TIME).findOne();
     return result;
   }
 
@@ -295,7 +308,7 @@ public class Web extends Controller {
    *}
    * </pre>
    * */
-  public static Result restApplicationSummariesForUser(String username) {
+  public Result restApplicationSummariesForUser(String username) {
     JsonArray applicationSummaryArray = new JsonArray();
 
     List<AppResult> results = null;
@@ -374,7 +387,7 @@ public class Web extends Controller {
    *}
    * </pre>
    **/
-  public static Result restJobSummariesForUser(String username) {
+  public Result restJobSummariesForUser(String username) {
 
     JsonArray jobSummaryArray = new JsonArray();
 
@@ -524,7 +537,7 @@ public class Web extends Controller {
    *}
    * </pre>
    */
-  public static Result restWorkflowSummariesForUser(String username) {
+  public Result restWorkflowSummariesForUser(String username) {
     JsonArray workflowSummaryArray = new JsonArray();
     List<AppResult> results = null;
     if (username == null || username.isEmpty()) {
@@ -670,7 +683,7 @@ public class Web extends Controller {
    *}
    * </pre>
    */
-  public static Result restWorkflowFromFlowId(String flowId) {
+  public Result restWorkflowFromFlowId(String flowId) {
 
     if (flowId == null || flowId.isEmpty()) {
       JsonObject parent = new JsonObject();
@@ -926,7 +939,7 @@ public class Web extends Controller {
    *
    * </pre>
    */
-  public static Result restJobFromJobId(String jobid) {
+  public Result restJobFromJobId(String jobid) {
 
     if (jobid == null || jobid.isEmpty()) {
       JsonObject parent = new JsonObject();
@@ -1132,7 +1145,7 @@ public class Web extends Controller {
    *}
    * </pre>
    */
-  public static Result restApplicationFromApplicationId(String applicationid) {
+  public Result restApplicationFromApplicationId(String applicationid) {
 
     if (applicationid == null || applicationid.isEmpty()) {
       JsonObject parent = new JsonObject();
@@ -1321,7 +1334,7 @@ public class Web extends Controller {
    *}
    * </pre>
    */
-  public static Result restSearchOptions() {
+  public Result restSearchOptions() {
     JsonObject searchOptions = new JsonObject();
     JsonArray jobCategory = new JsonArray();
     JsonArray severities = new JsonArray();
@@ -1387,8 +1400,8 @@ public class Web extends Controller {
    *  }
    * </pre>
    */
-  public static Result search() {
-    DynamicForm form = Form.form().bindFromRequest(request());
+  public Result search() {
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     JsonObject parent = new JsonObject();
 
     int offset = SEARCH_DEFAULT_PAGE_OFFSET;
@@ -1415,9 +1428,9 @@ public class Web extends Controller {
     }
 
     Query<AppResult> query =
-        Application.generateSearchQuery(AppResult.getSearchFields(), Application.getSearchParams());
+        appli.generateSearchQuery(AppResult.getSearchFields(), appli.getSearchParams());
 
-    total = query.findRowCount();
+    total = query.findCount();
 
     if (offset > total) {
       offset = total;
@@ -1471,8 +1484,8 @@ public class Web extends Controller {
    * Returns the filter parameters for the user summary
    * @return The filter parameters for the user summary
    */
-  public static Map<String, String> getFilterParamsForUserSummary() {
-    DynamicForm form = Form.form().bindFromRequest(request());
+  public Map<String, String> getFilterParamsForUserSummary() {
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     Map<String, String> filterParams = new HashMap<String, String>();
     filterParams.put(Application.FINISHED_TIME_BEGIN, form.get(Application.FINISHED_TIME_BEGIN));
     filterParams.put(Application.FINISHED_TIME_END, form.get(Application.FINISHED_TIME_END));
@@ -1542,8 +1555,8 @@ public class Web extends Controller {
    *   }
    *
    */
-  public static Result restGetUsersSummaryStats() {
-    DynamicForm form = Form.form().bindFromRequest(request());
+  public Result restGetUsersSummaryStats() {
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     int offset = SEARCH_DEFAULT_PAGE_OFFSET;
     int limit = SEARCH_DEFAULT_PAGE_LIMIT;
     int end = 0;
@@ -1650,7 +1663,7 @@ public class Web extends Controller {
       iUserIndex++;
     }
 
-    SqlRow resultRow = query.findUnique();
+    SqlRow resultRow = query.findOne();
     userResult.addProperty(JsonKeys.ID, usernameString);
     userResult.addProperty(JsonKeys.TOTAL_APPLICATIONS, resultRow.getLong("num_of_applications"));
     userResult.addProperty(JsonKeys.TOTAL_JOBS, resultRow.getLong("num_of_jobs"));
@@ -1663,7 +1676,7 @@ public class Web extends Controller {
     Query<AppResult> userSummaryQuery =
         generateUserApplicationSummaryQuery(usernames, filterParamsForUserSummary, sortBy, increasing);
 
-    total = userSummaryQuery.findRowCount();
+    total = userSummaryQuery.findCount();
 
     List<AppResult> results = userSummaryQuery.setFirstRow(offset).setMaxRows(limit)
         .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, AppHeuristicResult.getSearchFields()).findList();
@@ -1727,7 +1740,7 @@ public class Web extends Controller {
    *  }
    * }
    */
-  public static Result restExceptionStatuses () {
+  public Result restExceptionStatuses () {
     JsonObject parent = new JsonObject();
     Set<String> schedulersConfigured = InfoExtractor.getSchedulersConfiguredForException();
     JsonObject exception = new JsonObject();
@@ -1759,9 +1772,9 @@ public class Web extends Controller {
    * Controls Exceptions
    * @throws URISyntaxException
    */
-  public static Result restExceptions() throws URISyntaxException, MalformedURLException, IOException,
+  public Result restExceptions() throws URISyntaxException, MalformedURLException, IOException,
                                                AuthenticationException {
-    DynamicForm form = Form.form().bindFromRequest(request());
+    DynamicForm form = formFactory.form().bindFromRequest(request());
     String url = form.get("flow-exec-url");
     JsonObject parent = new JsonObject();
 
@@ -1879,7 +1892,7 @@ public class Web extends Controller {
    * @param logs The logs by the scheduler
    * @return The scheduler logs
    */
-  private static String getSchedulerLog(List<List<String>> logs) {
+  private String getSchedulerLog(List<List<String>> logs) {
     if(logs==null || logs.isEmpty()) {
       return "";
     }
@@ -1902,9 +1915,9 @@ public class Web extends Controller {
    * @param increasing The boolean value to sort the output based on the key desc or increasing
    * @return The Query object based on the given above parameters
    */
-  public static Query<AppResult> generateUserApplicationSummaryQuery(List<String> usernames,
+  public Query<AppResult> generateUserApplicationSummaryQuery(List<String> usernames,
       Map<String, String> searchParams, String sortKey, boolean increasing) {
-    ExpressionList<AppResult> query = AppResult.find.select(AppResult.getSearchFields()).where();
+    ExpressionList<AppResult> query = AppResult.find.query().select(AppResult.getSearchFields()).where();
     Junction<AppResult> junction = query.disjunction();
     for (String username : usernames) {
       junction.eq(AppResult.TABLE.USERNAME, username);
@@ -1943,7 +1956,7 @@ public class Web extends Controller {
    * @param sortKey The sortKey
    * @return The value from the sort key
    */
-  private static String getSortKey(String sortKey) {
+  private String getSortKey(String sortKey) {
     if (sortKey.equals("severity")) {
       return AppResult.TABLE.SEVERITY;
     } else if (sortKey.equals("resourceUsed")) {
@@ -1963,7 +1976,7 @@ public class Web extends Controller {
    * @param jsonArray The jsonArray to be sorted
    * @return The sorted jsonArray based on finishtime
    */
-  private static JsonArray getSortedJsonArrayByFinishTime(JsonArray jsonArray) {
+  private JsonArray getSortedJsonArrayByFinishTime(JsonArray jsonArray) {
     JsonArray sortedJsonArray = new JsonArray();
     List<JsonObject> jsonValues = new ArrayList<JsonObject>();
     for (int i = 0; i < jsonArray.size(); i++) {
@@ -1982,7 +1995,7 @@ public class Web extends Controller {
     return sortedJsonArray;
   }
 
-  private static List<Severity> getSortedSeverityKeys(Set<Severity> severities) {
+  private List<Severity> getSortedSeverityKeys(Set<Severity> severities) {
     List<Severity> severityList = new ArrayList<Severity>();
     severityList.addAll(severities);
     Collections.sort(severityList, new Comparator<Severity>() {
@@ -1999,7 +2012,7 @@ public class Web extends Controller {
    * @param time The string to be parsed
    * @return the epoch value
    */
-  private static long parseTime(String time) {
+  private long parseTime(String time) {
     long unixTime = 0;
     try {
       unixTime = Long.parseLong(time);

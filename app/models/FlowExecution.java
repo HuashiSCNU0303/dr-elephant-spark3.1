@@ -16,7 +16,7 @@
 
 package models;
 
-import com.avaje.ebean.annotation.UpdatedTimestamp;
+import io.ebean.annotation.UpdatedTimestamp;
 import java.sql.Timestamp;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -29,8 +29,8 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import play.db.ebean.Model;
-
+import io.ebean.Model;
+import io.ebean.Finder;
 
 @Entity
 @Table(name = "flow_execution")
@@ -70,8 +70,8 @@ public class FlowExecution extends Model {
   @UpdatedTimestamp
   public Timestamp updatedTs;
 
-  public static Model.Finder<Integer, FlowExecution> find =
-      new Model.Finder<Integer, FlowExecution>(Integer.class, FlowExecution.class);
+  public static Finder<Integer, FlowExecution> find =
+      new Finder<Integer, FlowExecution>(FlowExecution.class);
 
   @Override
   public void save() {
